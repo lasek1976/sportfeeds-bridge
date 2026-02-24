@@ -1,0 +1,15 @@
+namespace SportFeedsBridge.Configuration;
+
+public class RabbitMQSettings
+{
+    public string HostName { get; set; } = "localhost";
+    public int Port { get; set; } = 5672;
+    public string UserName { get; set; } = "guest";
+    public string Password { get; set; } = "guest";
+    public string VirtualHost { get; set; } = "/";
+    public string ExchangeName { get; set; } = "sportfeeds";
+    public string FixedQueueName { get; set; } = "sportfeeds.fixed";
+    public string LiveQueueName { get; set; } = "sportfeeds.live";
+    public string FixedRoutingKey { get; set; } = "feeds.fixed";
+    public string LiveRoutingKey { get; set; } = "feeds.live";
+}

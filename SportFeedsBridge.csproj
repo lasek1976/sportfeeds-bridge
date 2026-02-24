@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>13.0</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- MongoDB Driver 3.6 (includes GridFS) -->
+    <PackageReference Include="Gamenet.Phoenix.Infrastructure.Caching" Version="2026.1.1" />
+    <PackageReference Include="MongoDB.Driver" Version="3.6.0" />
+    <PackageReference Include="Phoenix.Infrastructure.Repository.Mongo" Version="2026.1.6" />
+
+    <!-- RabbitMQ Client -->
+    <PackageReference Include="RabbitMQ.Client" Version="7.0.0" />
+
+    <!-- ProtoBuf - protobuf-net kept for Phoenix domain models -->
+    <PackageReference Include="protobuf-net" Version="3.2.30" />
+
+    <!-- ProtoBuf - Official Google Implementation for RabbitMQ serialization -->
+    <PackageReference Include="Google.Protobuf" Version="3.29.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.71.0" PrivateAssets="All" />
+
+    <!-- Configuration -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.2" />
+
+    <!-- Logging -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
+
+    <!-- Dependency Injection -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy appsettings.json to output directory -->
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compile .proto file to generate C# classes -->
+    <Protobuf Include="..\proto\sportfeeds.proto" GrpcServices="None" />
+  </ItemGroup>
+
+</Project>
