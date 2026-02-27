@@ -10,6 +10,7 @@ using SportFeedsBridge.Phoenix.Models.Feeds;
 using SportFeedsBridge.Phoenix.Serializers;
 using SportFeedsBridge.Phoenix.Domain.Enums;
 using FeedsType = SportFeedsBridge.Phoenix.Domain.Enums.FeedsType;
+using System.Diagnostics;
 
 namespace SportFeedsBridge.Services;
 
@@ -41,6 +42,8 @@ public class MongoDbReaderService
             ?? throw new InvalidOperationException("Database name must be specified in ConnectionString");
 
         _database = _client.GetDatabase(databaseName);
+        
+        Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} [INF] {typeof(MongoDbReaderService).FullName}: Connected to MongoDB database: {databaseName}");
         _logger.LogInformation("Connected to MongoDB database: {DatabaseName}", databaseName);
         _gridFsBucket = new GridFSBucket(_database, new GridFSBucketOptions
         {
@@ -182,9 +185,11 @@ public class MongoDbReaderService
                 m.FeedsType == SportFeedsBridge.Phoenix.Domain.Enums.FeedsType.Fixed &&
                 m.MessageId > _lastProcessedFixedMessageId);
 
+            var swPointer = Stopwatch.StartNew();
             var pointer = isFirstRun
                 ? await query.SortByDescending(m => m.MessageId).Limit(1).FirstOrDefaultAsync()  // First run: get latest
                 : await query.SortBy(m => m.MessageId).Limit(1).FirstOrDefaultAsync();            // Normal: get next in sequence
+            swPointer.Stop();
 
             if (pointer == null)
             {
@@ -192,8 +197,8 @@ public class MongoDbReaderService
                 return (null, FeedsType.Fixed);
             }
 
-            _logger.LogInformation("Found Fixed snapshot pointer: MessageId={MessageId} (last processed: {LastProcessed}, first run: {IsFirstRun})",
-                pointer.MessageId, _lastProcessedFixedMessageId, isFirstRun);
+            _logger.LogInformation("Found Fixed snapshot pointer: MessageId={MessageId} (last processed: {LastProcessed}, first run: {IsFirstRun}) [pointer: {PointerMs}ms]",
+                pointer.MessageId, _lastProcessedFixedMessageId, isFirstRun, swPointer.ElapsedMilliseconds);
 
             // Get the actual message from FeedsMessages collection
             var message = await GetSnapshotByIdAsync(pointer.MessageId);
@@ -232,9 +237,11 @@ public class MongoDbReaderService
                 m.FeedsType == FeedsType.Live &&
                 m.MessageId > _lastProcessedLiveMessageId);
 
+            var swPointer = Stopwatch.StartNew();
             var pointer = isFirstRun
                 ? await query.SortByDescending(m => m.MessageId).Limit(1).FirstOrDefaultAsync()  // First run: get latest
                 : await query.SortBy(m => m.MessageId).Limit(1).FirstOrDefaultAsync();            // Normal: get next in sequence
+            swPointer.Stop();
 
             if (pointer == null)
             {
@@ -242,8 +249,8 @@ public class MongoDbReaderService
                 return (null, FeedsType.Live);
             }
 
-            _logger.LogInformation("Found Live snapshot pointer: MessageId={MessageId} (last processed: {LastProcessed}, first run: {IsFirstRun})",
-                pointer.MessageId, _lastProcessedLiveMessageId, isFirstRun);
+            _logger.LogInformation("Found Live snapshot pointer: MessageId={MessageId} (last processed: {LastProcessed}, first run: {IsFirstRun}) [pointer: {PointerMs}ms]",
+                pointer.MessageId, _lastProcessedLiveMessageId, isFirstRun, swPointer.ElapsedMilliseconds);
 
             // Get the actual message from FeedsMessages collection
             var message = await GetSnapshotByIdAsync(pointer.MessageId);
@@ -272,9 +279,11 @@ public class MongoDbReaderService
         {
             var collection = _database.GetCollection<FeedsMessage>(_settings.FeedsMessagesCollection);
 
+            var swFetch = Stopwatch.StartNew();
             var message = await collection
                 .Find(m => m.MessageId == messageId)
                 .FirstOrDefaultAsync();
+            swFetch.Stop();
 
             if (message == null)
             {
@@ -282,8 +291,8 @@ public class MongoDbReaderService
                 return null;
             }
 
-            _logger.LogInformation("Found Snapshot message: {MessageId} (Format: {Format})",
-                message.MessageId, message.Format);
+            _logger.LogInformation("Found Snapshot message: {MessageId} (Format: {Format}) [fetch: {FetchMs}ms]",
+                message.MessageId, message.Format, swFetch.ElapsedMilliseconds);
 
             return message;
         }

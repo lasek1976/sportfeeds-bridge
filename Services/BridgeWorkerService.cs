@@ -2,6 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SportFeedsBridge.Configuration;
+using System.Diagnostics;
 
 namespace SportFeedsBridge.Services;
 
@@ -179,11 +180,17 @@ public class BridgeWorkerService : BackgroundService
     {
         try
         {
+            var totalSw = Stopwatch.StartNew();
             var (snapshotMessage, snapshotFeedsType) = await _mongoReader.GetLatestFixedSnapshotAsync();
+            var mongoMs = totalSw.ElapsedMilliseconds;
+
             if (snapshotMessage != null)
             {
-                _logger.LogInformation("Processing Fixed Snapshot message: {MessageId}", snapshotMessage.MessageId);
+                _logger.LogInformation("Processing Fixed Snapshot message: {MessageId} [mongo: {MongoMs}ms]",
+                    snapshotMessage.MessageId, mongoMs);
                 await _rabbitPublisher.PublishMessageAsync(snapshotMessage, snapshotFeedsType);
+                _logger.LogInformation("Fixed Snapshot {MessageId} end-to-end: {TotalMs}ms",
+                    snapshotMessage.MessageId, totalSw.ElapsedMilliseconds);
             }
         }
         catch (Exception ex)
@@ -199,11 +206,17 @@ public class BridgeWorkerService : BackgroundService
     {
         try
         {
+            var totalSw = Stopwatch.StartNew();
             var (snapshotMessage, snapshotFeedsType) = await _mongoReader.GetLatestLiveSnapshotAsync();
+            var mongoMs = totalSw.ElapsedMilliseconds;
+
             if (snapshotMessage != null)
             {
-                _logger.LogInformation("Processing Live Snapshot message: {MessageId}", snapshotMessage.MessageId);
+                _logger.LogInformation("Processing Live Snapshot message: {MessageId} [mongo: {MongoMs}ms]",
+                    snapshotMessage.MessageId, mongoMs);
                 await _rabbitPublisher.PublishMessageAsync(snapshotMessage, snapshotFeedsType);
+                _logger.LogInformation("Live Snapshot {MessageId} end-to-end: {TotalMs}ms",
+                    snapshotMessage.MessageId, totalSw.ElapsedMilliseconds);
             }
         }
         catch (Exception ex)

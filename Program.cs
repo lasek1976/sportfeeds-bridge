@@ -5,6 +5,9 @@ using Google.Protobuf;
 using SportFeedsBridge.Configuration;
 using SportFeedsBridge.Services;
 using SportFeedsBridge.Phoenix.Models.Feeds.Diff;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace SportFeedsBridge;
 
@@ -26,10 +29,31 @@ class Program
             .AddEnvironmentVariables()
             .AddCommandLine(args);
 
-        // Logging
+        // Logging — console + hourly rolling file via Serilog
+        var logPath = builder.Configuration["Logging:File:Path"] ?? "logs/bridge-.log";
+        var retainHours = int.TryParse(builder.Configuration["Logging:File:RetainedHours"], out var h) ? h : 48;
+
+        // Messages printed directly in a custom color are excluded from the console
+        // sink to avoid duplication; they still reach the file sink via the outer pipeline.
+        const string consoleTemplate = "{Timestamp:HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}";
+        
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("System", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Logger(lc => lc
+                .WriteTo.Console(outputTemplate: consoleTemplate, theme: ConsoleTheme.None))
+            .WriteTo.File(
+                path: logPath,
+                rollingInterval: RollingInterval.Hour,
+                retainedFileCountLimit: retainHours,
+                outputTemplate:
+                    "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+
         builder.Logging.ClearProviders();
-        builder.Logging.AddConsole();
-        builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+        builder.Host.UseSerilog();
 
         // Configuration sections
         builder.Services.Configure<MongoDbSettings>(

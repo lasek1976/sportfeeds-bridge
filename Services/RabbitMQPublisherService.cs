@@ -6,6 +6,7 @@ using SportFeedsBridge.Phoenix.Models.Feeds;
 using SportFeedsBridge.Phoenix.Models.Feeds.Diff;
 using SportFeedsBridge.Phoenix.Domain.Enums;
 using Google.Protobuf;
+using System.Diagnostics;
 
 namespace SportFeedsBridge.Services;
 
@@ -130,7 +131,9 @@ public class RabbitMQPublisherService : IDisposable
             */
 
             // Serialize using ProtoBuf (standard proto3, not protobuf-net BCL)
+            var swSerialize = Stopwatch.StartNew();
             body = SerializeToProtoBuf(message.Body);
+            swSerialize.Stop();
             contentType = "application/protobuf";
 
             var properties = new BasicProperties
@@ -150,16 +153,19 @@ public class RabbitMQPublisherService : IDisposable
                 }
             };
 
+            var swPublish = Stopwatch.StartNew();
             await _channel.BasicPublishAsync(
                 exchange: _settings.ExchangeName,
                 routingKey: routingKey,
                 mandatory: true,
                 basicProperties: properties,
                 body: body);
+            swPublish.Stop();
 
             _logger.LogInformation(
-                "Published {FeedsType} message {MessageId} to RabbitMQ ({Size} bytes, routing: {RoutingKey})",
-                feedsType, message.MessageId, body.Length, routingKey);
+                "Published {FeedsType} message {MessageId} to RabbitMQ ({Size} bytes, routing: {RoutingKey}) [serialize: {SerializeMs}ms, publish: {PublishMs}ms]",
+                feedsType, message.MessageId, body.Length, routingKey,
+                swSerialize.ElapsedMilliseconds, swPublish.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
