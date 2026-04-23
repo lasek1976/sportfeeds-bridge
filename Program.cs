@@ -91,6 +91,19 @@ class Program
             return Results.Text(JsonFormatter.Default.Format(proto), "application/json");
         });
 
+        /// GET /api/message/snapshot/{id}/proto
+        /// Fetch a FeedsMessage snapshot by integer MessageId, return as Google.Protobuf binary.
+        /// Same wire format as RabbitMQ messages — directly decodable by protobuf.js on the Node.js side.
+        app.MapGet("/api/message/snapshot/{id:long}/proto", async (long id, MongoDbReaderService mongo) =>
+        {
+            var message = await mongo.GetSnapshotByIdAsync(id);
+            if (message?.Body is not DataFeedsDiff diff)
+                return Results.NotFound($"Snapshot {id} not found or body is not DataFeedsDiff");
+
+            var proto = ProtobufConverter.ToProtobuf(diff);
+            return Results.Bytes(proto.ToByteArray(), "application/octet-stream");
+        });
+
         /// GET /api/message/full/{id}
         /// Fetch a GridFS Full message by ObjectId hex string, return as JSON.
         app.MapGet("/api/message/full/{id}", async (string id, MongoDbReaderService mongo) =>

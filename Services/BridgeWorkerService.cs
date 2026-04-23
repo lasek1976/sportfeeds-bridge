@@ -62,14 +62,10 @@ public class BridgeWorkerService : BackgroundService
         _logger.LogInformation("Manually triggering Full messages send...");
 
         if (_settings.ProcessFixed)
-        {
             await SendFixedFullAsync();
-        }
 
         if (_settings.ProcessLive)
-        {
             await SendLiveFullAsync();
-        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -81,22 +77,24 @@ public class BridgeWorkerService : BackgroundService
         {
             try
             {
-                // On first run, send Full messages
+                // On first run, send Full messages — retry each poll cycle until both are available
                 if (_isFirstRun)
                 {
                     _logger.LogInformation("First run - sending Full messages for bootstrap");
 
-                    if (_settings.ProcessFixed)
-                    {
-                        await SendFixedFullAsync();
-                    }
+                    bool fixedOk = !_settings.ProcessFixed || await SendFixedFullAsync();
+                    bool liveOk  = !_settings.ProcessLive  || await SendLiveFullAsync();
 
-                    if (_settings.ProcessLive)
+                    if (fixedOk && liveOk)
                     {
-                        await SendLiveFullAsync();
+                        _isFirstRun = false;
                     }
-
-                    _isFirstRun = false;
+                    else
+                    {
+                        _logger.LogWarning("Full message(s) not yet available — will retry on next poll cycle");
+                        await Task.Delay(TimeSpan.FromSeconds(_settings.PollingIntervalSeconds), stoppingToken);
+                        continue;
+                    }
                 }
 
                 // Process Fixed Snapshot messages (continuous)
@@ -128,48 +126,56 @@ public class BridgeWorkerService : BackgroundService
 
     /// <summary>
     /// Send Fixed Full message (called at startup or on manual request)
+    /// Returns true if message was found and sent, false if not available yet.
     /// </summary>
-    private async Task SendFixedFullAsync()
+    private async Task<bool> SendFixedFullAsync()
     {
         try
         {
             var (fullMessage, fullFeedsType) = await _mongoReader.GetLatestFixedFullMessageAsync();
-            if (fullMessage != null)
+            if (fullMessage == null)
+                return false;
+
+            var feedsDiff = fullMessage.Body as SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff;
+            var eventCount = feedsDiff?.Events?.Count ?? 0;
+            _logger.LogInformation("Sending Fixed Full message: {MessageId} | Events: {EventCount}", fullMessage.MessageId, eventCount);
+
+            if (feedsDiff != null)
             {
-                _logger.LogInformation("Sending Fixed Full message: {MessageId}", fullMessage.MessageId);
-
-                // Debug: Save events for sports 28, 12, and 64 to JSON for inspection
-                if (fullMessage.Body is SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff feedsDiff)
-                {
-                    _debugService.SaveEventsBySport(feedsDiff, 28, 12, 64);
-                }
-
-                await _rabbitPublisher.PublishMessageAsync(fullMessage, fullFeedsType);
+                _debugService.SaveEventsBySport(feedsDiff);
             }
+
+            await _rabbitPublisher.PublishMessageAsync(fullMessage, fullFeedsType);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send Fixed Full message");
+            return false;
         }
     }
 
     /// <summary>
     /// Send Live Full message (called at startup or on manual request)
+    /// Returns true if message was found and sent, false if not available yet.
     /// </summary>
-    private async Task SendLiveFullAsync()
+    private async Task<bool> SendLiveFullAsync()
     {
         try
         {
             var (fullMessage, fullFeedsType) = await _mongoReader.GetLatestLiveFullMessageAsync();
-            if (fullMessage != null)
-            {
-                _logger.LogInformation("Sending Live Full message: {MessageId}", fullMessage.MessageId);
-                await _rabbitPublisher.PublishMessageAsync(fullMessage, fullFeedsType);
-            }
+            if (fullMessage == null)
+                return false;
+
+            var eventCount = (fullMessage.Body as SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff)?.Events?.Count ?? 0;
+            _logger.LogInformation("Sending Live Full message: {MessageId} | Events: {EventCount}", fullMessage.MessageId, eventCount);
+            await _rabbitPublisher.PublishMessageAsync(fullMessage, fullFeedsType);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send Live Full message");
+            return false;
         }
     }
 
@@ -186,8 +192,9 @@ public class BridgeWorkerService : BackgroundService
 
             if (snapshotMessage != null)
             {
-                _logger.LogInformation("Processing Fixed Snapshot message: {MessageId} [mongo: {MongoMs}ms]",
-                    snapshotMessage.MessageId, mongoMs);
+                var eventCount = (snapshotMessage.Body as SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff)?.Events?.Count ?? 0;
+                _logger.LogInformation("Processing Fixed Snapshot message: {MessageId} | Events: {EventCount} [mongo: {MongoMs}ms]",
+                    snapshotMessage.MessageId, eventCount, mongoMs);
                 await _rabbitPublisher.PublishMessageAsync(snapshotMessage, snapshotFeedsType);
                 _logger.LogInformation("Fixed Snapshot {MessageId} end-to-end: {TotalMs}ms",
                     snapshotMessage.MessageId, totalSw.ElapsedMilliseconds);
@@ -212,8 +219,9 @@ public class BridgeWorkerService : BackgroundService
 
             if (snapshotMessage != null)
             {
-                _logger.LogInformation("Processing Live Snapshot message: {MessageId} [mongo: {MongoMs}ms]",
-                    snapshotMessage.MessageId, mongoMs);
+                var eventCount = (snapshotMessage.Body as SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff)?.Events?.Count ?? 0;
+                _logger.LogInformation("Processing Live Snapshot message: {MessageId} | Events: {EventCount} [mongo: {MongoMs}ms]",
+                    snapshotMessage.MessageId, eventCount, mongoMs);
                 await _rabbitPublisher.PublishMessageAsync(snapshotMessage, snapshotFeedsType);
                 _logger.LogInformation("Live Snapshot {MessageId} end-to-end: {TotalMs}ms",
                     snapshotMessage.MessageId, totalSw.ElapsedMilliseconds);

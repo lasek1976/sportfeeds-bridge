@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SportFeedsBridge.Phoenix.Models.Feeds.Diff;
 using System.IO;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using System.Text.Json;
 
 namespace SportFeedsBridge.Services;
@@ -30,7 +31,7 @@ public class DebugProtoBufService
             // Test 1: Empty message with just root fields (no events)
             var emptyDto = new Sportfeeds.DataFeedsDiff
             {
-                CreatedUTCTime = DateTime.UtcNow.Ticks,
+                CreatedUTCTime = Timestamp.FromDateTime(DateTime.UtcNow),
                 DiffType = Sportfeeds.DiffType.Updated
             };
 
@@ -39,7 +40,7 @@ public class DebugProtoBufService
             // Test 2: Message with just root fields + DifferenceProperties
             var withPropsDto = new Sportfeeds.DataFeedsDiff
             {
-                CreatedUTCTime = DateTime.UtcNow.Ticks,
+                CreatedUTCTime = Timestamp.FromDateTime(DateTime.UtcNow),
                 DiffType = Sportfeeds.DiffType.Updated
             };
             withPropsDto.DifferenceProperties.Add(new Sportfeeds.DiffKeyValue
@@ -78,45 +79,16 @@ public class DebugProtoBufService
     }
 
     /// <summary>
-    /// Save full message as JSON to inspect event structure
-    /// </summary>
-    public void SaveFullAsJson(SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff feedsDiff, string suffix = "")
-    {
-        try
-        {
-            // Convert Phoenix model to Google.Protobuf model
-            var fullDto = ProtobufConverter.ToProtobuf(feedsDiff);
-            var json = JsonFormatter.Default.Format(fullDto);
-
-            var filename = string.IsNullOrEmpty(suffix)
-                ? "full-message.json"
-                : $"full-message-{suffix}.json";
-            var filePath = Path.Combine(_debugPath, filename);
-
-            File.WriteAllText(filePath, json);
-
-            _logger.LogInformation("💾 Saved Full message as JSON");
-            _logger.LogInformation("   File: {FilePath}", filePath);
-            _logger.LogInformation("   Events: {Count}", fullDto.Events?.Count ?? 0);
-            _logger.LogInformation("   Size: {Size} KB", new FileInfo(filePath).Length / 1024);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save Full message as JSON");
-        }
-    }
-
-    /// <summary>
     /// Save specific events for sports to JSON for debugging
     /// </summary>
-    public void SaveEventsBySport(SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff feedsDiff, params int[] sportIds)
+    public void SaveEventsBySport(SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff feedsDiff)
     {
         try
         {
             // Convert Phoenix model to Google.Protobuf model
             var fullDto = ProtobufConverter.ToProtobuf(feedsDiff);
 
-            foreach (var sportId in sportIds)
+            foreach (var sportId in fullDto.Events.Select(e => e.IDSport).Distinct().ToList())
             {
                 var sportEvents = fullDto.Events.Where(e => e.IDSport == sportId).ToList();
 
@@ -137,19 +109,15 @@ public class DebugProtoBufService
                 {
                     sportDto.Events.Add(evt);
                 }
+                
+                _logger.LogInformation("Sport {SportId} has {Count} events",sportId, sportEvents.Count);
 
-                var json = JsonFormatter.Default.Format(sportDto);
-                var filename = $"sport-{sportId}-events.json";
-                var filePath = Path.Combine(_debugPath, filename);
+                // var json = JsonFormatter.Default.Format(sportDto);
+                // var filename = $"sport-{sportId}-events.json";
+                // var filePath = Path.Combine(_debugPath, filename);
+                // _logger.LogInformation("Saving json file: {FilePath}", filePath);
+                // File.WriteAllText(filePath, json);
 
-                File.WriteAllText(filePath, json);
-
-                _logger.LogInformation("💾 Saved Sport {SportId} events to JSON", sportId);
-                _logger.LogInformation("   File: {FilePath}", filePath);
-                _logger.LogInformation("   Events: {Count}", sportEvents.Count);
-                _logger.LogInformation("   Sample SportName: {SportName}", sportEvents[0].SportName ?? "(null)");
-                _logger.LogInformation("   Sample SportNameTranslations keys: {Keys}",
-                    sportEvents[0].SportNameTranslations?.Keys.Count ?? 0);
             }
         }
         catch (Exception ex)

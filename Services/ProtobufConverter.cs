@@ -1,6 +1,7 @@
 using SportFeedsBridge.Phoenix.Models.Feeds.Diff;
 using Sportfeeds; // Generated protobuf namespace
 using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
 
 namespace SportFeedsBridge.Services;
 
@@ -10,11 +11,20 @@ namespace SportFeedsBridge.Services;
 /// </summary>
 public static class ProtobufConverter
 {
+    /// <summary>
+    /// Converts a DateTime to a Google.Protobuf.WellKnownTypes.Timestamp.
+    /// Ensures the DateTime is treated as UTC.
+    /// </summary>
+    private static Timestamp ToTimestamp(DateTime dt)
+    {
+        return Timestamp.FromDateTime(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
+    }
+
     public static Sportfeeds.DataFeedsDiff ToProtobuf(Phoenix.Models.Feeds.Diff.DataFeedsDiff source)
     {
         var result = new Sportfeeds.DataFeedsDiff
         {
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -47,9 +57,9 @@ public static class ProtobufConverter
             IDCategory = source.IDCategory,
             IDTournament = source.IDTournament,
             IDEvent = source.IDEvent,
-            EventDate = source.EventDate.Ticks,
-            StartDate = source.StartDate.Ticks,
-            EndDate = source.EndDate.Ticks,
+            EventDate = ToTimestamp(source.EventDate),
+            StartDate = ToTimestamp(source.StartDate),
+            EndDate = ToTimestamp(source.EndDate),
             EventName = source.EventName ?? string.Empty,
             MPath = source.MPath ?? string.Empty,
             HasResults = source.HasResults,
@@ -77,7 +87,7 @@ public static class ProtobufConverter
             MatchType = source.MatchType,
             EventMarketGroupType = source.EventMarketGroupType,
             IsWizardBetBuilderEligible = source.IsWizardBetBuilderEligible,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -175,7 +185,7 @@ public static class ProtobufConverter
             AamsLinkedMarketId = source.AamsLinkedMarketId.GetValueOrDefault(),
             NameOverride = source.NameOverride ?? string.Empty,
             StatisticValue = source.StatisticValue.GetValueOrDefault(),
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -217,7 +227,7 @@ public static class ProtobufConverter
             ResultOverride = source.ResultOverride.GetValueOrDefault(),
             ProviderIdTeam = source.ProviderIdTeam ?? string.Empty,
             SelectionStatus = (Sportfeeds.ProgramStatus)source.SelectionStatus,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -247,7 +257,7 @@ public static class ProtobufConverter
             IsGroup = source.IsGroup,
             IDSogei = source.IDSogei.GetValueOrDefault(),
             FullTeamName = source.FullTeamName ?? string.Empty,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -271,7 +281,7 @@ public static class ProtobufConverter
         {
             IdResultType = source.IdResultType,
             ResultValue = source.ResultValue ?? string.Empty,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -297,8 +307,8 @@ public static class ProtobufConverter
             HasStatistics = source.HasStatistics,
             LiveMultiCast = source.LiveMultiCast,
             LiveScore = source.LiveScore,
-            ProviderDate = source.ProviderDate.Ticks,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            ProviderDate = ToTimestamp(source.ProviderDate),
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -340,10 +350,10 @@ public static class ProtobufConverter
         {
             ResultId = source.ResultId,
             ResultTypeId = source.ResultTypeId,
-            UpdatedTime = source.UpdatedTime.Ticks,
+            UpdatedTime = ToTimestamp(source.UpdatedTime),
             ResultValue = source.ResultValue,
             IsTeam = source.IsTeam,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -364,7 +374,7 @@ public static class ProtobufConverter
         {
             StreamProvider = source.StreamProvider ?? string.Empty,
             StreamID = source.StreamID ?? string.Empty,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 
@@ -385,7 +395,7 @@ public static class ProtobufConverter
         {
             IdClient = source.IdClient,
             Description = source.Description ?? string.Empty,
-            CreatedUTCTime = source.CreatedUTCTime.Ticks,
+            CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };
 

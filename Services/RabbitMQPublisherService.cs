@@ -195,7 +195,7 @@ public class RabbitMQPublisherService : IDisposable
             _logger.LogInformation("✓ Deserialized successfully!");
             _logger.LogInformation("  - Events: {EventCount}", deserialized.Events?.Count ?? 0);
             _logger.LogInformation("  - DiffType: {DiffType}", deserialized.DiffType);
-            _logger.LogInformation("  - CreatedUTCTime: {Time}", new DateTime(deserialized.CreatedUTCTime));
+            _logger.LogInformation("  - CreatedUTCTime: {Time}", deserialized.CreatedUTCTime?.ToDateTime());
 
             // Check if event properties are populated
             if (deserialized.Events?.Count > 0)
@@ -207,8 +207,7 @@ public class RabbitMQPublisherService : IDisposable
                 _logger.LogInformation("    - SportName: '{SportName}'", firstEvent.SportName ?? "(null)");
                 _logger.LogInformation("    - TournamentName: '{TournamentName}'", firstEvent.TournamentName ?? "(null)");
                 _logger.LogInformation("    - IDSport: {IDSport}", firstEvent.IDSport);
-                _logger.LogInformation("    - EventDate Ticks: {EventDateTicks}", firstEvent.EventDate);
-                _logger.LogInformation("    - EventDate: {EventDate}", new DateTime(firstEvent.EventDate));
+                _logger.LogInformation("    - EventDate: {EventDate}", firstEvent.EventDate?.ToDateTime());
                 _logger.LogInformation("    - DiffType: {DiffType}", firstEvent.DiffType);
                 _logger.LogInformation("    - Markets Count: {MarketsCount}", firstEvent.Markets?.Count ?? 0);
                 _logger.LogInformation("    - Teams Count: {TeamsCount}", firstEvent.Teams?.Count ?? 0);
