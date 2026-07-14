@@ -19,7 +19,6 @@ namespace SportFeedsBridge.Phoenix.Models.Feeds
         [ProtoMember(10)] public decimal? SSpread { get; set; }
         [ProtoMember(11)] public short? ResultOverride { get; set; }
         [ProtoMember(12)] public string ProviderIDTeam { get; set; }
-        [ProtoMember(13)] public ProgramStatus SelectionStatus { get; set; }
 
         public override bool Equals(object obj)
         {

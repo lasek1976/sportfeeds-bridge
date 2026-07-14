@@ -53,8 +53,7 @@ Edit `appsettings.json`:
   },
   "Processing": {
     "PublishFormat": "ProtoBuf",
-    "PollingIntervalSeconds": 5,
-    "BatchSize": 10
+    "PollingIntervalSeconds": 5
   }
 }
 ```

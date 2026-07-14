@@ -78,6 +78,9 @@ class Program
         // Used by the Node.js admin page to fetch and display/download messages.
         // The same Phoenix → ProtobufConverter → Google.Protobuf pipeline used
         // for RabbitMQ publishing is reused here — output is JSON via JsonFormatter.
+        // WithFormatDefaultValues(true) ensures zero/false/empty fields are included,
+        // otherwise proto3 JsonFormatter.Default omits them (e.g. OddValue = 0).
+        var jsonFormatter = new JsonFormatter(JsonFormatter.Settings.Default.WithFormatDefaultValues(true));
 
         /// GET /api/message/snapshot/{id}
         /// Fetch a FeedsMessage snapshot by integer MessageId, return as JSON.
@@ -88,7 +91,7 @@ class Program
                 return Results.NotFound($"Snapshot {id} not found or body is not DataFeedsDiff");
 
             var proto = ProtobufConverter.ToProtobuf(diff);
-            return Results.Text(JsonFormatter.Default.Format(proto), "application/json");
+            return Results.Text(jsonFormatter.Format(proto), "application/json");
         });
 
         /// GET /api/message/snapshot/{id}/proto
@@ -113,7 +116,7 @@ class Program
                 return Results.NotFound($"GridFS file {id} not found");
 
             var proto = ProtobufConverter.ToProtobuf(diff);
-            return Results.Text(JsonFormatter.Default.Format(proto), "application/json");
+            return Results.Text(jsonFormatter.Format(proto), "application/json");
         });
 
         await app.RunAsync();

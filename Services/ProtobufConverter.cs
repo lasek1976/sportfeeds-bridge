@@ -226,7 +226,6 @@ public static class ProtobufConverter
             SSpread = (double)source.SSpread.GetValueOrDefault(),
             ResultOverride = source.ResultOverride.GetValueOrDefault(),
             ProviderIdTeam = source.ProviderIdTeam ?? string.Empty,
-            SelectionStatus = (Sportfeeds.ProgramStatus)source.SelectionStatus,
             CreatedUTCTime = ToTimestamp(source.CreatedUTCTime),
             DiffType = (Sportfeeds.DiffType)source.DiffType
         };

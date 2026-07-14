@@ -35,8 +35,6 @@ namespace SportFeedsBridge.Phoenix.Models.Feeds.Diff
         public short? ResultOverride { get; set; }
         [DataMember(Name = "m12"), ProtoMember(12)]
         public string ProviderIdTeam { get; set; }
-        [DataMember(Name = "m13"), ProtoMember(13)]
-        public ProgramStatus SelectionStatus { get; set; }
 
         public DataSelectionDiff Instance()
         {
@@ -61,14 +59,6 @@ namespace SportFeedsBridge.Phoenix.Models.Feeds.Diff
                 into.ResultOverride = from.ResultOverride;
                 into.ProviderIdTeam = from.ProviderIDTeam;
                 into.DiffType = convertStatus;
-                into.SelectionStatus = from.SelectionStatus;
-
-                //check if selection must forcibly closing
-                if (new[] {ProgramStatus.NotStartedRetired}.Contains(from.SelectionStatus))
-                {
-                    into.IDOdd = 0;
-                    into.OddValue = 0;
-                }
             }
             return into;
         }
