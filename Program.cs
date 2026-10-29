@@ -66,6 +66,7 @@ class Program
         // Services
         builder.Services.AddSingleton<MongoDbReaderService>();
         builder.Services.AddSingleton<DebugProtoBufService>();
+        builder.Services.AddSingleton<FullDumpService>();
         builder.Services.AddSingleton<RabbitMQPublisherService>();
         builder.Services.AddSingleton<RabbitMQControlService>();
 

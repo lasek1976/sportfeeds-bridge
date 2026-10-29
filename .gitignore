@@ -348,3 +348,6 @@ Logs/
 
 *.DotSettings
 *.DotSettings
+
+# Full messages dumped at startup
+full/

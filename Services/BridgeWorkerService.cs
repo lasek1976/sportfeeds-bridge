@@ -17,6 +17,7 @@ public class BridgeWorkerService : BackgroundService
     private readonly RabbitMQPublisherService _rabbitPublisher;
     private readonly RabbitMQControlService _controlService;
     private readonly DebugProtoBufService _debugService;
+    private readonly FullDumpService _fullDumpService;
     private readonly ProcessingSettings _settings;
 
     // Track if initial Full messages have been sent at startup
@@ -28,6 +29,7 @@ public class BridgeWorkerService : BackgroundService
         RabbitMQPublisherService rabbitPublisher,
         RabbitMQControlService controlService,
         DebugProtoBufService debugService,
+        FullDumpService fullDumpService,
         IOptions<ProcessingSettings> settings)
     {
         _logger = logger;
@@ -35,6 +37,7 @@ public class BridgeWorkerService : BackgroundService
         _rabbitPublisher = rabbitPublisher;
         _controlService = controlService;
         _debugService = debugService;
+        _fullDumpService = fullDumpService;
         _settings = settings.Value;
 
         // Listen for control messages
@@ -82,8 +85,8 @@ public class BridgeWorkerService : BackgroundService
                 {
                     _logger.LogInformation("First run - sending Full messages for bootstrap");
 
-                    bool fixedOk = !_settings.ProcessFixed || await SendFixedFullAsync();
-                    bool liveOk  = !_settings.ProcessLive  || await SendLiveFullAsync();
+                    bool fixedOk = !_settings.ProcessFixed || await SendFixedFullAsync(saveToDisk: true);
+                    bool liveOk  = !_settings.ProcessLive  || await SendLiveFullAsync(saveToDisk: true);
 
                     if (fixedOk && liveOk)
                     {
@@ -127,8 +130,9 @@ public class BridgeWorkerService : BackgroundService
     /// <summary>
     /// Send Fixed Full message (called at startup or on manual request)
     /// Returns true if message was found and sent, false if not available yet.
+    /// When saveToDisk is true, the message is also dumped as JSON (startup bootstrap).
     /// </summary>
-    private async Task<bool> SendFixedFullAsync()
+    private async Task<bool> SendFixedFullAsync(bool saveToDisk = false)
     {
         try
         {
@@ -143,6 +147,9 @@ public class BridgeWorkerService : BackgroundService
             if (feedsDiff != null)
             {
                 _debugService.SaveEventsBySport(feedsDiff);
+
+                if (saveToDisk)
+                    _fullDumpService.SaveFull(feedsDiff, fullFeedsType, fullMessage.MessageId);
             }
 
             await _rabbitPublisher.PublishMessageAsync(fullMessage, fullFeedsType);
@@ -158,8 +165,9 @@ public class BridgeWorkerService : BackgroundService
     /// <summary>
     /// Send Live Full message (called at startup or on manual request)
     /// Returns true if message was found and sent, false if not available yet.
+    /// When saveToDisk is true, the message is also dumped as JSON (startup bootstrap).
     /// </summary>
-    private async Task<bool> SendLiveFullAsync()
+    private async Task<bool> SendLiveFullAsync(bool saveToDisk = false)
     {
         try
         {
@@ -167,8 +175,13 @@ public class BridgeWorkerService : BackgroundService
             if (fullMessage == null)
                 return false;
 
-            var eventCount = (fullMessage.Body as SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff)?.Events?.Count ?? 0;
+            var feedsDiff = fullMessage.Body as SportFeedsBridge.Phoenix.Models.Feeds.Diff.DataFeedsDiff;
+            var eventCount = feedsDiff?.Events?.Count ?? 0;
             _logger.LogInformation("Sending Live Full message: {MessageId} | Events: {EventCount}", fullMessage.MessageId, eventCount);
+
+            if (feedsDiff != null && saveToDisk)
+                _fullDumpService.SaveFull(feedsDiff, fullFeedsType, fullMessage.MessageId);
+
             await _rabbitPublisher.PublishMessageAsync(fullMessage, fullFeedsType);
             return true;
         }
