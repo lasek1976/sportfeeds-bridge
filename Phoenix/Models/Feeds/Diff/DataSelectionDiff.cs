@@ -35,6 +35,10 @@ namespace SportFeedsBridge.Phoenix.Models.Feeds.Diff
         public short? ResultOverride { get; set; }
         [DataMember(Name = "m12"), ProtoMember(12)]
         public string ProviderIdTeam { get; set; }
+        // Deserialized from Mongo only for the startup Full JSON dump (FullDumpService);
+        // intentionally not mapped to the proto, so it is not published on RabbitMQ.
+        [DataMember(Name = "m13"), ProtoMember(13)]
+        public ProgramStatus SelectionStatus { get; set; }
 
         public DataSelectionDiff Instance()
         {

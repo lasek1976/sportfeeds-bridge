@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using SportFeedsBridge.Phoenix.Domain.Enums;
@@ -35,9 +37,13 @@ public class FullDumpService
             var filePath = Path.Combine(_dumpPath, $"{feedsType.ToString().ToLowerInvariant()}-full-{messageId}.json");
 
             var proto = ProtobufConverter.ToProtobuf(feedsDiff);
-            using (var writer = new StreamWriter(filePath))
+            var json = JsonNode.Parse(JsonFormatter.Format(proto))!;
+            AddSelectionStatus(json, feedsDiff);
+
+            using (var stream = File.Create(filePath))
+            using (var writer = new Utf8JsonWriter(stream))
             {
-                JsonFormatter.Format(proto, writer);
+                json.WriteTo(writer);
             }
 
             _logger.LogInformation("Saved {FeedsType} Full message {MessageId} to {FilePath} ({Size} bytes)",
@@ -46,6 +52,28 @@ public class FullDumpService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save {FeedsType} Full message {MessageId} to disk", feedsType, messageId);
+        }
+    }
+
+    /// <summary>
+    /// SelectionStatus is not part of the proto (not published on RabbitMQ), so it is added
+    /// to the dump only. ProtobufConverter keeps list order 1:1, so items are matched by index.
+    /// </summary>
+    private static void AddSelectionStatus(JsonNode json, DataFeedsDiff feedsDiff)
+    {
+        var events = feedsDiff.Events ?? [];
+        for (var e = 0; e < events.Count; e++)
+        {
+            var markets = events[e]?.Markets ?? [];
+            for (var m = 0; m < markets.Count; m++)
+            {
+                var selections = markets[m]?.Selections ?? [];
+                for (var s = 0; s < selections.Count; s++)
+                {
+                    if (json["Events"]?[e]?["Markets"]?[m]?["Selections"]?[s] is JsonObject selectionJson)
+                        selectionJson["SelectionStatus"] = (int)selections[s].SelectionStatus;
+                }
+            }
         }
     }
 }
